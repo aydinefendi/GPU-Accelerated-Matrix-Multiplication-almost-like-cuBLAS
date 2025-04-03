@@ -9,48 +9,50 @@
 
 __global__ void matrixMulKernel(float *A, float *B, float *C, int N);
 
-
 int main(int argc, char *argv[])
 {
     int N = 10;
-    float *A = (float *)malloc(sizeof(float) * N);
-    float *B = (float *)malloc(sizeof(float) * N);
-    float *C = (float *)malloc(sizeof(float) * N);
+    float *A = (float *)malloc(sizeof(float) * N *N);
+    float *B = (float *)malloc(sizeof(float) * N *N);
+    float *C = (float *)malloc(sizeof(float) * N *N);
 
     for (int i = 0; i < N; i++)
     {
-        A[i] = (rand() % 10) + 1;
-        B[i] = (rand() % 10) + 1;
-        C[i] = 0;
+        for (int j = 0; j < N; j++) {
+            A[i*N + j] = (rand() % 10) + 1;
+            B[i*N + j] = (rand() % 10) + 1;
+            C[i*N + j] = 0;
+        }
     }
 
-
     float *d_A, *d_B, *d_C;
-    cudaError_t err = cudaMalloc((void**)&d_A, sizeof(float) *N);
+    cudaError_t err = cudaMalloc((void**)&d_A, sizeof(float) *N*N);
     CUDA_CHECK(err);
-    err = cudaMalloc((void**)&d_B, sizeof(float) *N);
+    err = cudaMalloc((void**)&d_B, sizeof(float) *N*N);
     CUDA_CHECK(err);
-    err = cudaMalloc((void**)&d_C, sizeof(float) *N);
-    CUDA_CHECK(err);
-
-    err = cudaMemcpy(d_A, A, sizeof(float) *N, cudaMemcpyHostToDevice);
-    CUDA_CHECK(err);
-    err = cudaMemcpy(d_B, B, sizeof(float) *N, cudaMemcpyHostToDevice);
+    err = cudaMalloc((void**)&d_C, sizeof(float) *N*N);
     CUDA_CHECK(err);
 
-    dim3 block(4, 1, 1);
-    dim3 grid((N + block.x - 1) / block.x, 1, 1);
+    err = cudaMemcpy(d_A, A, sizeof(float) *N*N, cudaMemcpyHostToDevice);
+    CUDA_CHECK(err);
+    err = cudaMemcpy(d_B, B, sizeof(float) *N*N, cudaMemcpyHostToDevice);
+    CUDA_CHECK(err);
+
+    dim3 block(4, 4, 1);
+    dim3 grid(ceil(N/block.x), ceil(N/block.y), 1);
     
     matrixMulKernel<<<grid, block>>>(d_A, d_B, d_C, N);
 
-    err = cudaMemcpy(C, d_C, sizeof(float) *N, cudaMemcpyDeviceToHost);
+    err = cudaMemcpy(C, d_C, sizeof(float) *N*N, cudaMemcpyDeviceToHost);
     CUDA_CHECK(err);
 
-    printf("\nVector Multiplication Results:\n");
+    printf("\nMatrix Multiplication Results:\n");
     for (int i = 0; i < N; i++) {
-        printf("%f * %f = %f\n", A[i], B[i], C[i]);
+        for (int j = 0; j < N; j++) {
+            printf("%.2f * %.2f = %.2f\n", A[i*N + j], B[i*N + j], C[i*N + j]);
+        }
+        printf("\n");
     }
-    
 
     cudaFree(d_A);
     cudaFree(d_B);
@@ -64,9 +66,17 @@ int main(int argc, char *argv[])
 
 __global__ void matrixMulKernel(float *A, float *B, float *C, int N)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < N)
+    int i = blockIdx.y * blockDim.y + threadIdx.y;
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+   
+
+    if (i < N && j < N)
     {
-        C[i] = A[i] * B[i];
+        int value = 0;
+        for (int k = 0; k < N;k++)
+        {
+            value += A[i*N + k] * B[k*N + j];
+        }
+        C[i*N + j] = value;
     }
 }
