@@ -8,15 +8,15 @@
 
 #define CUDA_CHECK(err) {if (err != cudaSuccess){printf("%s in %s at line %d \n", cudaGetErrorString(err), __FILE__, __LINE__);exit(EXIT_FAILURE);}}
 
-#define TILE_WIDTH 4
+#define TILE_WIDTH 16
 
 __global__ void matrixMulKernel(float *A, float *B, float *C, int N1, int N2, int N3);
 
 int main(int argc, char *argv[])
 {
-    int N1 = 12;
-    int N2 = 8; 
-    int N3 = 12;
+    int N1 = 1024;
+    int N2 = 1024; 
+    int N3 = 1024;
     float *A = (float *)malloc(sizeof(float) * N1 *N2);
     float *B = (float *)malloc(sizeof(float) * N2 *N3);
     float *C = (float *)malloc(sizeof(float) * N1 *N3);
@@ -58,20 +58,23 @@ int main(int argc, char *argv[])
     CUDA_CHECK(err);
 
     dim3 block(TILE_WIDTH, TILE_WIDTH, 1);
-    dim3 grid(ceil(N1/block.x), ceil(N3/block.y), 1);
+    dim3 grid(ceil((float) N3/TILE_WIDTH), ceil((float) N1/TILE_WIDTH), 1);
+
+    cudaEvent_t start, stop;
+    float elapsedTime;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start, 0);
     
     matrixMulKernel<<<grid, block>>>(d_A, d_B, d_C, N1, N2, N3);
 
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&elapsedTime, start, stop);
+    printf("Kernel execution time: %.3f milliseconds\n", elapsedTime);
+    
     err = cudaMemcpy(C, d_C, sizeof(float) *N1*N3, cudaMemcpyDeviceToHost);
     CUDA_CHECK(err);
-
-    printf("\nMatrix Multiplication Results:\n");
-    for (int i = 0; i < N1; i++) {
-        for (int j = 0; j < N3; j++) {
-            printf("%.2f * %.2f = %.2f\n", A[i*N2 + j], B[i*N1 + j], C[i*N3 + j]);
-        }
-        printf("\n");
-    }
 
     cudaFree(d_A);
     cudaFree(d_B);
