@@ -21,12 +21,26 @@ int main(int argc, char *argv[])
     float *B = (float *)malloc(sizeof(float) * N2 *N3);
     float *C = (float *)malloc(sizeof(float) * N1 *N3);
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < N1; i++)
     {
-        for (int j = 0; j < N; j++) {
-            A[i*N + j] = (rand() % 10) + 1;
-            B[i*N + j] = (rand() % 10) + 1;
-            C[i*N + j] = 0;
+        for (int j = 0; j < N2; j++) {
+            A[i*N2 + j] = (rand() % 10) + 1;
+        }
+    }
+
+    for (int i = 0; i < N2; i++)
+    {
+        for (int j = 0; j < N3; j++)
+        {
+            B[i*N3 + j] = (rand() % 10) + 1;
+        }
+    }
+
+    for (int i = 0; i < N1; i++)
+    {
+        for (int j = 0; j < N3; j++)
+        {
+            C[i*N3 + j] = 0;
         }
     }
 
