@@ -10,14 +10,16 @@
 
 #define TILE_WIDTH 4
 
-__global__ void matrixMulKernel(float *A, float *B, float *C, int N);
+__global__ void matrixMulKernel(float *A, float *B, float *C, int N1, int N2, int N3);
 
 int main(int argc, char *argv[])
 {
-    int N = 12;
-    float *A = (float *)malloc(sizeof(float) * N *N);
-    float *B = (float *)malloc(sizeof(float) * N *N);
-    float *C = (float *)malloc(sizeof(float) * N *N);
+    int N1 = 12;
+    int N2 = 8; 
+    int N3 = 12;
+    float *A = (float *)malloc(sizeof(float) * N1 *N2);
+    float *B = (float *)malloc(sizeof(float) * N2 *N3);
+    float *C = (float *)malloc(sizeof(float) * N1 *N3);
 
     for (int i = 0; i < N; i++)
     {
@@ -29,30 +31,30 @@ int main(int argc, char *argv[])
     }
 
     float *d_A, *d_B, *d_C;
-    cudaError_t err = cudaMalloc((void**)&d_A, sizeof(float) *N*N);
+    cudaError_t err = cudaMalloc((void**)&d_A, sizeof(float) *N1*N2);
     CUDA_CHECK(err);
-    err = cudaMalloc((void**)&d_B, sizeof(float) *N*N);
+    err = cudaMalloc((void**)&d_B, sizeof(float) *N2*N1);
     CUDA_CHECK(err);
-    err = cudaMalloc((void**)&d_C, sizeof(float) *N*N);
-    CUDA_CHECK(err);
-
-    err = cudaMemcpy(d_A, A, sizeof(float) *N*N, cudaMemcpyHostToDevice);
-    CUDA_CHECK(err);
-    err = cudaMemcpy(d_B, B, sizeof(float) *N*N, cudaMemcpyHostToDevice);
+    err = cudaMalloc((void**)&d_C, sizeof(float) *N1*N3);
     CUDA_CHECK(err);
 
-    dim3 block(4, 4, 1);
-    dim3 grid(ceil(N/block.x), ceil(N/block.y), 1);
+    err = cudaMemcpy(d_A, A, sizeof(float) *N1*N2, cudaMemcpyHostToDevice);
+    CUDA_CHECK(err);
+    err = cudaMemcpy(d_B, B, sizeof(float) *N2*N1, cudaMemcpyHostToDevice);
+    CUDA_CHECK(err);
+
+    dim3 block(TILE_WIDTH, TILE_WIDTH, 1);
+    dim3 grid(ceil(N1/block.x), ceil(N3/block.y), 1);
     
-    matrixMulKernel<<<grid, block>>>(d_A, d_B, d_C, N);
+    matrixMulKernel<<<grid, block>>>(d_A, d_B, d_C, N1, N2, N3);
 
-    err = cudaMemcpy(C, d_C, sizeof(float) *N*N, cudaMemcpyDeviceToHost);
+    err = cudaMemcpy(C, d_C, sizeof(float) *N1*N3, cudaMemcpyDeviceToHost);
     CUDA_CHECK(err);
 
     printf("\nMatrix Multiplication Results:\n");
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            printf("%.2f * %.2f = %.2f\n", A[i*N + j], B[i*N + j], C[i*N + j]);
+    for (int i = 0; i < N1; i++) {
+        for (int j = 0; j < N3; j++) {
+            printf("%.2f * %.2f = %.2f\n", A[i*N2 + j], B[i*N1 + j], C[i*N3 + j]);
         }
         printf("\n");
     }
@@ -67,11 +69,10 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-__global__ void matrixMulKernel(float *A, float *B, float *C, int N)
+__global__ void matrixMulKernel(float *A, float *B, float *C, int N1, int N2, int N3)
 {
     assert(TILE_WIDTH == blockDim.x);
     assert(TILE_WIDTH == blockDim.y);
-    assert(N % TILE_WIDTH == 0);
 
     int by = blockIdx.y;
     int bx = blockIdx.x;
@@ -86,20 +87,20 @@ __global__ void matrixMulKernel(float *A, float *B, float *C, int N)
 
     float value = 0;
 
-    for (int phase = 0; phase < (float) ceil(N/TILE_WIDTH);phase++)
+    for (int phase = 0; phase < (float) ceil(N1/TILE_WIDTH);phase++)
     {
-        if (i < N && (phase *TILE_WIDTH + tx) < N)
+        if (i < N1 && (phase *TILE_WIDTH + tx) < N1)
         {
-            sh_A[ty][tx] = A[(i*N + (phase *TILE_WIDTH + tx))];
+            sh_A[ty][tx] = A[(i*N1 + (phase *TILE_WIDTH + tx))];
         }
         else 
         {
             sh_A[ty][tx] = 0.0f;
         }
 
-        if (j < N && ((phase*TILE_WIDTH + ty)*N + j) < N)
+        if (j < N2 && ((phase*TILE_WIDTH + ty)*N2 + j) < N2)
         {
-            sh_B[ty][tx] = B[((phase*TILE_WIDTH + ty)*N + j)];
+            sh_B[ty][tx] = B[((phase*TILE_WIDTH + ty)*N2 + j)];
         }
         else
         {
@@ -114,8 +115,8 @@ __global__ void matrixMulKernel(float *A, float *B, float *C, int N)
         __synchthreads;
     }
 
-    if (i < N && j < N)
+    if (i < N1 && j < N3)
     {
-        C[i*N+j] = value;
+        C[i*N3+j] = value;
     }
 }
