@@ -4,14 +4,17 @@
 #include <string.h>
 #include <cuda_runtime.h>
 #include <math.h>
+#include <assert.h>
 
 #define CUDA_CHECK(err) {if (err != cudaSuccess){printf("%s in %s at line %d \n", cudaGetErrorString(err), __FILE__, __LINE__);exit(EXIT_FAILURE);}}
+
+#define TILE_WIDTH 4
 
 __global__ void matrixMulKernel(float *A, float *B, float *C, int N);
 
 int main(int argc, char *argv[])
 {
-    int N = 10;
+    int N = 12;
     float *A = (float *)malloc(sizeof(float) * N *N);
     float *B = (float *)malloc(sizeof(float) * N *N);
     float *C = (float *)malloc(sizeof(float) * N *N);
@@ -66,17 +69,38 @@ int main(int argc, char *argv[])
 
 __global__ void matrixMulKernel(float *A, float *B, float *C, int N)
 {
-    int i = blockIdx.y * blockDim.y + threadIdx.y;
-    int j = blockIdx.x * blockDim.x + threadIdx.x;
-   
+    assert(TILE_WIDTH == blockDim.x);
+    assert(TILE_WIDTH == blockDim.y);
+    assert(N % TILE_WIDTH == 0);
+
+    int by = blockIdx.y;
+    int bx = blockIdx.x;
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    
+    int i = by * TILE_WIDTH + ty;
+    int j = bx * TILE_WIDTH + tx;
+
+    __shared__ float sh_A[TILE_WIDTH][TILE_WIDTH];
+    __shared__ float sh_B[TILE_WIDTH][TILE_WIDTH];
+
+    int value = 0;
+
+    for (int phase = 0; phase < N/TILE_WIDTH;phase++)
+    {
+        sh_A[ty][tx] = A[(i*N + (phase *TILE_WIDTH + tx))];
+        sh_B[ty][tx] = B[((phase*TILE_WIDTH + ty)*N + j)];
+        __synchthreads;
+
+        for (int k = 0; k < TILE_WIDTH;k++)
+        {
+            value += sh_A[ty][k] * sh_B[k][tx];
+        }
+        __synchthreads;
+    }
 
     if (i < N && j < N)
     {
-        int value = 0;
-        for (int k = 0; k < N;k++)
-        {
-            value += A[i*N + k] * B[k*N + j];
-        }
-        C[i*N + j] = value;
+        C[i*N+j] = value;
     }
 }
