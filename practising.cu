@@ -101,7 +101,7 @@ __global__ void matrixMulKernel(float *A, float *B, float *C, int N1, int N2, in
 
     float value = 0;
 
-    for (int phase = 0; phase < (float) ceil(N1/TILE_WIDTH);phase++)
+    for (int phase = 0; phase < ceil((float) (N1/TILE_WIDTH));phase++)
     {
         if (i < N1 && (phase *TILE_WIDTH + tx) < N1)
         {
@@ -120,13 +120,13 @@ __global__ void matrixMulKernel(float *A, float *B, float *C, int N1, int N2, in
         {
             sh_B[ty][tx] = 0.0f;
         }
-        __synchthreads;
+        __syncthreads();
 
         for (int k = 0; k < TILE_WIDTH;k++)
         {
             value += sh_A[ty][k] * sh_B[k][tx];
         }
-        __synchthreads;
+        __syncthreads();
     }
 
     if (i < N1 && j < N3)
