@@ -84,12 +84,27 @@ __global__ void matrixMulKernel(float *A, float *B, float *C, int N)
     __shared__ float sh_A[TILE_WIDTH][TILE_WIDTH];
     __shared__ float sh_B[TILE_WIDTH][TILE_WIDTH];
 
-    int value = 0;
+    float value = 0;
 
-    for (int phase = 0; phase < N/TILE_WIDTH;phase++)
+    for (int phase = 0; phase < (float) ceil(N/TILE_WIDTH);phase++)
     {
-        sh_A[ty][tx] = A[(i*N + (phase *TILE_WIDTH + tx))];
-        sh_B[ty][tx] = B[((phase*TILE_WIDTH + ty)*N + j)];
+        if (i < N && (phase *TILE_WIDTH + tx) < N)
+        {
+            sh_A[ty][tx] = A[(i*N + (phase *TILE_WIDTH + tx))];
+        }
+        else 
+        {
+            sh_A[ty][tx] = 0.0f;
+        }
+
+        if (j < N && ((phase*TILE_WIDTH + ty)*N + j) < N)
+        {
+            sh_B[ty][tx] = B[((phase*TILE_WIDTH + ty)*N + j)];
+        }
+        else
+        {
+            sh_B[ty][tx] = 0.0f;
+        }
         __synchthreads;
 
         for (int k = 0; k < TILE_WIDTH;k++)
