@@ -34,14 +34,13 @@ int main() {
 
     float alpha = 1.0f, beta = 0.0f;
 
-    // Create and start CUDA timer
+
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     cudaEventRecord(start);
 
-    // Matrix multiplication: C = A * B
-    // A (N×K), B (K×M), C (N×M)
+   
     CUBLAS_CHECK(cublasSgemm(handle,
                              CUBLAS_OP_N, CUBLAS_OP_N,
                              M, N, K,
@@ -51,7 +50,7 @@ int main() {
                              &beta,
                              d_C, M));
 
-    // Stop CUDA timer
+
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     float elapsed_ms = 0.0f;
@@ -59,7 +58,6 @@ int main() {
 
     printf("cuBLAS sgemm time: %.3f ms\n", elapsed_ms);
 
-    // Clean up
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
     CUDA_CHECK(cudaMemcpy(h_C, d_C, N * M * sizeof(float), cudaMemcpyDeviceToHost));
