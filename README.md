@@ -2,6 +2,8 @@
 
 This project implements high-performance matrix multiplication using **CUDA C**, mimicking the behavior of NVIDIA's **cuBLAS** library for a large matrix size: `4096 × 4096`.
 
+> All benchmarks were run on an **NVIDIA L40S GPU (48GiB VRAM)** using **CUDA 12.0**, on **Brev.dev**, with 1 GPU, 8 CPU cores, and 147GiB system RAM.
+
 ---
 
 ## Overview
