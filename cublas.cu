@@ -10,9 +10,9 @@
     printf("cuBLAS error at %s:%d\n", __FILE__, __LINE__); exit(EXIT_FAILURE); }}
 
 int main() {
-    int N = 1024;
-    int M = 1024;
-    int K = 1024;
+    int N = 4096;
+    int M = 4096;
+    int K = 4096;
 
     float *h_A = (float *)malloc(N * K * sizeof(float));
     float *h_B = (float *)malloc(K * M * sizeof(float));
