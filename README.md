@@ -14,7 +14,7 @@ This project implements high-performance matrix multiplication using **CUDA C**,
 
 ---
 
-## 🔧 Matrix Setup
+## Matrix Setup
 
 - Matrix A shape: `(4096 × 4096)`
 - Matrix B shape: `(4096 × 4096)`
